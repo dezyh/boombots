@@ -9,7 +9,7 @@ enum Team {
   Black = "Black",
 }
 
-const HOST = "ws://192.168.1.112:8008";
+const HOST = "ws://0.0.0.0:8008";
 
 const App = () => {
   const [users, setUsers] = useState<any>([]);

@@ -1,0 +1,10 @@
+FROM rust as builder
+WORKDIR server
+COPY . .
+RUN cargo build --release --bin server
+
+FROM rust as runtime
+WORKDIR server
+COPY --from=builder /server/target/release/server /usr/local/bin
+ENTRYPOINT ["./usr/local/bin/app"]
+

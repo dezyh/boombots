@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+
+  client:
+    image: node:alpine
+    command: sh -c 'yarn install && yarn start'
+    volumes:
+        - ./client:/client:cached
+    ports:
+        - 3000:3000
+    environment:
+      CLIENT_ENV: development
+    stdin_open: true
+    working_dir: /client
+    container_name: boombots-client
+    networks:
+      - boombots-network
+
+  server:
+    build: 
+      context: .
+      dockerfile: ./server/Dockerfile.dev
+    command: sh -c 'cargo watch -x run'
+    volumes:
+        - ./server:/server:cached
+    ports:
+        - 8008:8008
+    container_name: boombots-server
+    working_dir: /server
+    networks:
+      - boombots-network
+
+networks:
+  boombots-network:
+    driver: bridge
