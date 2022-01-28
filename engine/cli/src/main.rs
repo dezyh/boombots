@@ -19,5 +19,5 @@ fn search(n: u8) {
 }
 
 fn main() {
-    search(10);
+    search(20);
 }

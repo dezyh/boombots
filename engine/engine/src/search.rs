@@ -32,14 +32,16 @@ impl Search {
     ) -> NegamaxResult {
         let mut alpha = alpha;
         let original_alpha = alpha;
-        let actions = Action::generate(&bitboard);
+        let scored_actions = Action::generate(&bitboard, None);
         let mut best_score = LOSS;
-        let mut best_action = actions.first().expect("No actions");
+        let mut best_action = scored_actions.first().expect("No actions").action;
         let mut aggregate = NegamaxStats { score: LOSS, trans: 0, nodes: 0 };
 
-        for action in &actions {
+        for scored_action in &scored_actions {
+            let action = scored_action.action;
             let delta = bitboard.delta(action.clone());
             let hash = bitboard.make(&delta);
+
             let stats = Search::negamax_score(bitboard, transpositions, depth - 1, -beta, -alpha);
             let score = -stats.score;
             aggregate.nodes += stats.nodes;
@@ -119,6 +121,7 @@ impl Search {
         let mut beta = beta;
         let original_alpha = alpha;
 
+        let mut pv_move = None;
         let previous = transpositions.lookup(bitboard.hash);
         if let Some(previous) = previous {
             if previous.depth >= depth {
@@ -139,30 +142,52 @@ impl Search {
                         }
                     }
                 }
-            };
+            } else {
+                // Use the previous move as the PV
+                pv_move = Some(previous.action);
+            }
         }
 
         // Evaluate leaf nodes
-        if depth == 0 {
+        if depth <= 0 {
             return NegamaxStats { score: Evaluate::evaluate(&bitboard), nodes: 1, trans: 0 };
         }
 
         // Otherwise keep searching deeper
-        let actions = Action::generate(&bitboard);
+        let scored_actions = Action::generate(&bitboard, pv_move);
 
-        if actions.len() == 0 {
+        if scored_actions.len() == 0 {
             return NegamaxStats { score: LOSS, nodes: 1, trans: 0 };
         }
 
         let mut best_score = LOSS;
-        let mut best_action = actions[0];
+        let mut best_action = scored_actions.first().expect("Should be actions available").action;
 
         let mut aggregate = NegamaxStats { score: LOSS, nodes: 0, trans: 0 };
 
-        for action in actions {
+        for scored_action in scored_actions {
+            let action = scored_action.action;
             let delta = bitboard.delta(action);
             let hash = bitboard.make(&delta);
-            let stats = Search::negamax_score(bitboard, transpositions, depth - 1, -beta, -alpha);
+
+            // Redimentary late move reduction
+            const MIN: u8 = 2;
+            const CUT1L: u16 = 100;
+            const CUT1U: u16 = CUT1L + 1;
+            const CUT2L: u16 = 300;
+            const CUT2U: u16 = CUT2L + 1;
+            let next_depth = match depth {
+                1..=MIN => depth - 1,
+                _ => match scored_action.score {
+                    0..=CUT1L => max(MIN, depth / 3),
+                    CUT1U..=CUT2L => max(MIN, depth / 2),
+                    _ => max(MIN, depth - 1),
+                },
+            };
+
+            // Remove any bad moves that give <25 move score
+            let stats = Search::negamax_score(bitboard, transpositions, next_depth, -beta, -alpha);
+
             let score = -stats.score;
             aggregate.trans += stats.trans;
             aggregate.nodes += stats.nodes;

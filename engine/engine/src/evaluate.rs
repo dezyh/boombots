@@ -20,10 +20,30 @@ impl Evaluate {
         }
     }
 
+    fn stack_power(bitboard: &Bitboard) -> i16 {
+        let mut white = 0;
+        let mut black = 0;
+
+        for height in 1..=8 {
+            if bitboard.board[height] != 0 {
+                let whites = Bitwise::pcnt(bitboard.board[height] & bitboard.board[WHITE]);
+                let blacks = Bitwise::pcnt(bitboard.board[height] & bitboard.board[BLACK]);
+                white += (height * height) as u64 * whites;
+                black += (height * height) as u64 * blacks;
+            }
+        }
+
+        match bitboard.turn {
+            WHITE => white as i16 - black as i16,
+            BLACK => black as i16 - white as i16,
+            _ => panic!("Never reaches here"),
+        }
+    }
+
     fn robots(bitboard: &Bitboard) -> i16 {
         match bitboard.turn {
-            WHITE => 100 * (bitboard.robots_white - bitboard.robots_black),
-            BLACK => 100 * (bitboard.robots_black - bitboard.robots_white),
+            WHITE => 1000 * (bitboard.robots_white - bitboard.robots_black),
+            BLACK => 1000 * (bitboard.robots_black - bitboard.robots_white),
             _ => panic!("Never reaches here"),
         }
     }
@@ -40,7 +60,11 @@ impl Evaluate {
 
     /// Evaluates the material advantage of the bitboard
     pub fn evaluate(bitboard: &Bitboard) -> i16 {
-        Evaluate::constrain(Evaluate::robots(&bitboard) + Evaluate::surface_area(&bitboard))
+        Evaluate::constrain(
+            Evaluate::robots(&bitboard)
+                + Evaluate::surface_area(&bitboard)
+                + Evaluate::stack_power(&bitboard),
+        )
     }
 
     /// Evaluates the outcome of the bitboard
