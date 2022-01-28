@@ -2,11 +2,11 @@
 A simple 2-player game player over a standard 8x8 board.
 
 ## Projects
-### Game Server
+### Game Server (v0.0.1)
 A parallel and asynchronous game server written in Rust. 
-### Web Client
+### Web Client (v0.0.1)
 A React client to interface with the game server over websockets.
-### Cli Client
+### Cli Client - (in-progress)
 A Rust terminal client to interface with the game server.
 
 ## Game
