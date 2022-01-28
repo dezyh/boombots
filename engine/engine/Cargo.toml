@@ -13,4 +13,9 @@ criterion = { version = "0.3", features = ["html_reports"] }
 name = "my_bench"
 harness = false
 
+[[bench]]
+name = "bitboard"
+harness = false
+
 [dependencies]
+tinyvec = "1.5.1"

@@ -28,6 +28,7 @@ pub enum Delta {
 pub struct Bitboard {
     pub hash: u64,
     pub turn: usize,
+    pub opponent: usize,
     pub board: [u64; 14],
     pub robots_white: i16,
     pub robots_black: i16,
@@ -35,8 +36,7 @@ pub struct Bitboard {
 }
 impl Bitboard {
     /// Finds the height of the robot at the given position
-    fn height(&self, pos: u64) -> u8 {
-        // TODO: Rewrite this without branching
+    pub fn height(&self, pos: u64) -> u8 {
         for i in 1..=12 {
             if self.board[i] & pos != 0 {
                 return i as u8;
@@ -224,7 +224,10 @@ impl Bitboard {
 
     // Toggles the turn player
     fn toggle_turn(&mut self) {
-        self.turn = if self.turn == WHITE { BLACK } else { WHITE };
+        let previous = self.turn;
+        self.turn = self.opponent;
+        self.opponent = previous;
+        self.hash ^= ZORBIST_TURN;
     }
 
     // Takes a precomputed action delta and applies it onto the bitboard
@@ -235,14 +238,13 @@ impl Bitboard {
             Delta::Directional(directional) => self.make_directional(directional),
         };
 
+        // Update the zorbist hash
+        self.hash ^= hash_delta;
+
         // Toggle the turn player
         self.toggle_turn();
 
-        // Update the zorbist hash
-        self.hash ^= hash_delta;
-        self.hash ^= ZORBIST_TURN;
-
-        self.hash
+        hash_delta
     }
 
     /// Takes a raw move and computes the changes required in order to update the bitboard and hash
@@ -258,7 +260,6 @@ impl Bitboard {
         self.toggle_turn();
 
         // Undo the hash update
-        self.hash ^= ZORBIST_TURN;
         self.hash ^= hash_delta;
 
         // Undo the move
@@ -276,6 +277,7 @@ impl Bitboard {
         Self {
             board,
             turn: WHITE,
+            opponent: BLACK,
             hash: ZORBIST_INITIAL,
             robots_white: 12,
             robots_black: 12,
@@ -287,6 +289,7 @@ impl Bitboard {
         Self {
             board: [0; 14],
             turn: WHITE,
+            opponent: BLACK,
             hash: ZORBIST_INITIAL,
             robots_white: 0,
             robots_black: 0,
@@ -306,18 +309,66 @@ impl Bitboard {
 
 #[cfg(test)]
 mod tests {
+    use crate::format::Format;
+
     use super::*;
 
     #[test]
     fn undo_after_stacking_height_1_onto_1() {
         let mut board = Bitboard::new();
+        let ihash = board.hash;
         let action = Action { source: 0, target: 1, robots: 1 };
-
         let delta = board.delta(action);
-        println!("{:?}", delta);
+        let hash = board.make(&delta);
+        board.undo(&delta, hash);
+        assert_eq!(board, Bitboard::new());
+    }
+
+    #[test]
+    fn undo_after_moving_height_1_onto_empty() {
+        let mut board = Bitboard::new();
+        let ihash = board.hash;
+        let action = Action { source: 1, target: 2, robots: 1 };
+        let delta = board.delta(action);
+        let hash = board.make(&delta);
+
+        board.undo(&delta, hash);
+        assert_eq!(board, Bitboard::new());
+    }
+
+    #[test]
+    fn undo_after_moving_1_from_2_stack_onto_empty() {
+        let mut board = Bitboard::new();
+        let action1 = Action { source: 0, target: 1, robots: 1 };
+        let delta1 = board.delta(action1);
+        let hash1 = board.make(&delta1);
+        let action2 = Action { source: 1, target: 2, robots: 1 };
+        let delta2 = board.delta(action2);
+        let hash2 = board.make(&delta2);
+        board.undo(&delta2, hash2);
+        let mut correct = Bitboard::new();
+        correct.make(&delta1);
+
+        assert_eq!(board, correct);
+    }
+
+    #[test]
+    fn undo_after_moving_1_from_2_stack_onto_1() {
+        let mut board = Bitboard::new();
+        let mut correct = Bitboard::new();
+
+        let action = Action { source: 0, target: 1, robots: 1 };
+        let delta = board.delta(action);
+
+        board.make(&delta);
+        correct.make(&delta);
+
+        let action = Action { source: 1, target: 3, robots: 1 };
+        let delta = board.delta(action);
+
         let hash = board.make(&delta);
         board.undo(&delta, hash);
 
-        assert_eq!(board, Bitboard::new());
+        assert_eq!(board, correct);
     }
 }
