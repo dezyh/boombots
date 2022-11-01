@@ -150,22 +150,16 @@ impl Bitwise {
     /// Sets all bits that are adjacent to any set bit. Includes diagonally, but never includes
     /// the original set bits. Does not overflow edges, see masks for details.
     #[inline(always)]
-    pub fn adj_no_wave(pos: u64) -> u64 {
-        const LEFT_OVERFLOW: u64 = 0x0101010101010101;
-        const RIGHT_OVERFLOW: u64 = 0x8080808080808080;
-        // Shift the row left (<< 1) and right (>> 1) and mask off any bits that overflow.
-        let row = pos | (!LEFT_OVERFLOW & pos << 1) | (!RIGHT_OVERFLOW & pos >> 1);
-        // Shift the row up (<< 8) and down (>> 8)
-        let grid = row | (row << 8) | (row >> 8);
-        // Don't include the source position as adjacent to itself
-        grid
+    pub fn adj(pos: u64) -> u64 {
+        Bitwise::adj_grid(pos)
     }
 
-    /// Sets all bits that are adjacent to any set bit. Includes diagonally, but never includes
-    /// the original set bits. Does not overflow edges, see masks for details.
+
+    /// Shifts the source position left and right then up and down (taking care to not overflow).
+    /// This is more optimized: 4 SHIFTs, 2 ANDs, 4 ORs and 1 XOR = 11 ops
     #[inline(always)]
-    pub fn adj(pos: u64) -> u64 {
-        const LEFT_OVERFLOW: u64 = 0x0101010101010101;
+    pub fn adj_grid(pos: u64) -> u64 {
+        const LEFT_OVERFLOW: u64 = 0x0101010101010100;
         const RIGHT_OVERFLOW: u64 = 0x8080808080808080;
         // Shift the row left (<< 1) and right (>> 1) and mask off any bits that overflow.
         let row = pos | (!LEFT_OVERFLOW & pos << 1) | (!RIGHT_OVERFLOW & pos >> 1);
@@ -173,6 +167,22 @@ impl Bitwise {
         let grid = row | (row << 8) | (row >> 8);
         // Don't include the source position as adjacent to itself
         grid ^ pos
+    }
+
+    /// Shifts each source position in each 9 cardinal directions. 
+    /// This is safe but wasteful: 8 SHIFTs, 9 ANDs, 9 ORs and 1 NEG = 27 ops.
+    #[inline(always)]
+    pub fn adj_slow(pos: u64) -> u64 {
+        let mut adj: u64 = 0;
+        adj |= (pos & N_SHIFT_MASK) << N_SHIFT;
+        adj |= (pos & W_SHIFT_MASK) << W_SHIFT;
+        adj |= (pos & E_SHIFT_MASK) >> E_SHIFT;
+        adj |= (pos & S_SHIFT_MASK) >> S_SHIFT;
+        adj |= (pos & NE_SHIFT_MASK) << NE_SHIFT;
+        adj |= (pos & NW_SHIFT_MASK) << NW_SHIFT;
+        adj |= (pos & SE_SHIFT_MASK) >> SE_SHIFT;
+        adj |= (pos & SW_SHIFT_MASK) >> SW_SHIFT;
+        adj & !pos
     }
 
     /// Sets all bits that are adjacent to any set bit. Includes diagonally, and also the original
