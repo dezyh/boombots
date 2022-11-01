@@ -59,7 +59,7 @@ impl Action {
         // Get all opponent robots
         let opps = bitboard.board[bitboard.opponent];
         // Get all squares that are a check on an opponents robot
-        let checks = Bitwise::adj_any(opps);
+        let checks = Bitwise::adj(opps);
         // Calculate the position of the action target index
         let target = Bitwise::pos(action.target);
         // Check if our target matches a target position that is a check
@@ -222,7 +222,7 @@ impl Action {
 
         // Find all possible boom locations that could provide net value. This only occurs when the
         // boom source is touching an enemy robot.
-        let mut sources = bots & Bitwise::adj_any(opps);
+        let mut sources = bots & Bitwise::adj(opps);
 
         // We could compute the boom islands to elimite booms that would lead to the same game
         // state but hopefully the transition table will solve this issue for us.

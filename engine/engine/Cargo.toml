@@ -10,11 +10,15 @@ debug = true
 criterion = { version = "0.3", features = ["html_reports"] }
 
 [[bench]]
-name = "my_bench"
+name = "search"
 harness = false
 
 [[bench]]
 name = "bitboard"
+harness = false
+
+[[bench]]
+name = "bitwise"
 harness = false
 
 [dependencies]

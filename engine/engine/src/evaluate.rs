@@ -11,8 +11,8 @@ pub enum Outcome {
 
 impl Evaluate {
     fn surface_area(bitboard: &Bitboard) -> i16 {
-        let white = Bitwise::pcnt(Bitwise::adj_any(bitboard.board[WHITE])) as i16;
-        let black = Bitwise::pcnt(Bitwise::adj_any(bitboard.board[BLACK])) as i16;
+        let white = Bitwise::pcnt(Bitwise::adj(bitboard.board[WHITE])) as i16;
+        let black = Bitwise::pcnt(Bitwise::adj(bitboard.board[BLACK])) as i16;
         match bitboard.turn {
             WHITE => white - black,
             BLACK => black - white,
@@ -84,8 +84,8 @@ impl Evaluate {
     /// TODO: Move this into bitboard
     fn attacking(bitboard: &Bitboard) -> bool {
         // Calculates white attacking black and black attacking white
-        (Bitwise::adj_any(bitboard.board[WHITE]) & bitboard.board[BLACK])
-            | (Bitwise::adj_any(bitboard.board[BLACK]) & bitboard.board[WHITE])
+        (Bitwise::adj(bitboard.board[WHITE]) & bitboard.board[BLACK])
+            | (Bitwise::adj(bitboard.board[BLACK]) & bitboard.board[WHITE])
             != 0
     }
 }

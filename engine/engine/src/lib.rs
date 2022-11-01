@@ -1,5 +1,10 @@
+// Development
 #![allow(dead_code)]
 #![allow(unused_imports)]
+
+// Nightly features
+#![feature(const_option_ext)]
+#![feature(unchecked_math)]
 
 use crate::{
     bitboard::Bitboard,
