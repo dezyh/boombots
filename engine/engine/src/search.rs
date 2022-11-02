@@ -223,16 +223,16 @@ pub struct Search {}
 mod tests {
     use super::*;
 
-    #[test]
-    fn full_search_5() {
-        let mut tt = TranspositionTable::new(28);
-        let mut bb = Bitboard::new();
-        let mut result;
-        for i in 0..=4 {
-            result = Search::negamax_move(&mut bb, &mut tt, i, LOSS, WIN);
-            if i == 4 {
-                assert_eq!(result.nodes, 85443758);
-            }
-        }
-    }
+    // #[test]
+    // fn full_search_5() {
+    //     let mut tt = TranspositionTable::new(28);
+    //     let mut bb = Bitboard::new();
+    //     let mut result;
+    //     for i in 0..=4 {
+    //         result = Search::negamax_move(&mut bb, &mut tt, i, LOSS, WIN);
+    //         if i == 4 {
+    //             assert_eq!(result.nodes, 85443758);
+    //         }
+    //     }
+    // }
 }

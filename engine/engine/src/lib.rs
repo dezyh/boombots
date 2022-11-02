@@ -5,6 +5,7 @@
 // Nightly features
 #![feature(const_option_ext)]
 #![feature(unchecked_math)]
+#![feature(stdsimd)]
 
 use crate::{
     bitboard::Bitboard,

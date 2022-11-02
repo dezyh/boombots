@@ -34,10 +34,70 @@ pub struct Bitboard {
     pub robots_black: i16,
     pub robots_total: i16,
 }
+
+use core::arch::x86_64::__m512i as u64x8;
+use std::arch::x86_64::{
+    _MM_CMPINT_NE as U64_NE, 
+    _mm512_and_epi64 as and_u64x8, 
+    _mm512_cmp_epu64_mask as cmp_u64x8, 
+    _mm512_loadu_epi64 as load_u64x8
+};
+
+const fn from_u64x8(vals: [u64; 8]) -> u64x8 {
+    union U64x8 {
+        vector: u64x8,
+        bytes: [u64; 8],
+    }
+
+    unsafe { (U64x8 { bytes: vals }).vector }
+}
+
+const ZEROS: u64x8 = from_u64x8([0, 0, 0, 0, 0, 0, 0, 0]);
+
 impl Bitboard {
+    /// Finds the height of the bot at position.
+    ///
+    /// Since a bitboard frame is a u64 and the maximum height is 8, we can fit 
+    /// all 8 bitboard frames, representing bots with heights 1-8, into a single u64x8 (__m512i).
+    ///
+    /// 1. One AVX512 op to identify which bit within all 8 bitboard frames has the position bit set.
+    /// 2. One AVX512 op to find the index of the bitboard frame which contains the set position bit. 
+    /// 3. One CPU op to convert the frame index from a single set bit in a u8 (n) to an integer (n) 
+    /// in the range 1-8.
+    #[inline(always)]
+    fn height_avx512(&self, pos: u64) -> u8 {
+        unsafe {
+            let board = load_u64x8(self.board[1..=8].as_ptr() as *const i64);
+
+            // Repeat the position mask to AND it against each of the boards height frames in the
+            // same AVX512 operation.
+            let mask: [u64; 8] = [pos, pos, pos, pos, pos, pos, pos, pos];
+            let mask = load_u64x8(mask.as_ptr() as *const i64);
+
+            // Perform an AND of each bitboard frame to the repeated position mask to isolate the
+            // only robot at that position but at some unknown frame.
+            let bot = and_u64x8(board, mask);
+
+            // To recover the index of the frame which has the only set bit representing the bot,
+            // we can compare each frame to zeros. This will set a bit in the resulting u8 that
+            // corrosponds to the robots height (eg: 0b1=>1, 0b10=>2, 0b100=>3, 0b1000=>4, etc).
+            let height = cmp_u64x8::<U64_NE>(bot, ZEROS) as u8;
+
+            // Now that we have only the n-th bit set, we can count the number of trailing zeros
+            // and add 1 to compute the height of the robot at the specified position. 
+            height.trailing_zeros() as u8 + 1
+        }
+    }
+
     /// Finds the height of the robot at the given position
+    #[inline(always)]
     pub fn height(&self, pos: u64) -> u8 {
-        for i in 1..=12 {
+        self.height_loop(pos)
+    }
+
+    #[inline(always)]
+    fn height_loop(&self, pos: u64) -> u8 {
+        for i in 1..=8 {
             if self.board[i] & pos != 0 {
                 return i as u8;
             }
@@ -297,7 +357,10 @@ impl Bitboard {
         }
     }
 
+    /// Adds a bot at the u64 position, with specified height and team.
     pub fn with(mut self, pos: u64, height: usize, team: usize) -> Self {
+        debug_assert!(pos.count_ones() == 1, "pos must by a non-zero power of 2 to be a valid position");
+
         self.board[team] |= pos;
         self.board[height] |= pos;
         self.hash ^= ZORBIST_KEY[team][Bitwise::idx(pos) as usize];
@@ -370,5 +433,27 @@ mod tests {
         board.undo(&delta, hash);
 
         assert_eq!(board, correct);
+    }
+
+    #[test]
+    fn height_avx512() {
+        let bb = Bitboard::empty()
+            .with(1, 1, WHITE)
+            .with(2, 2, WHITE)
+            .with(4, 3, WHITE)
+            .with(8, 4, WHITE)
+            .with(16, 5, WHITE)
+            .with(32, 6, WHITE)
+            .with(64, 7, WHITE)
+            .with(128, 8, WHITE);
+
+        assert_eq!(bb.height_avx512(1), 1);
+        assert_eq!(bb.height_avx512(2), 2);
+        assert_eq!(bb.height_avx512(4), 3);
+        assert_eq!(bb.height_avx512(8), 4);
+        assert_eq!(bb.height_avx512(16), 5);
+        assert_eq!(bb.height_avx512(32), 6);
+        assert_eq!(bb.height_avx512(64), 7);
+        assert_eq!(bb.height_avx512(128), 8);
     }
 }
