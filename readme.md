@@ -19,4 +19,5 @@ A Rust terminal client to interface with the game server.
 4. If moving some of a stack of robots, the player may move 1-N robots from the stack of height N up to N units in each cardinal direction (N, E, S, W)
     - The number of robots moved and the distance the robots move are separate. For example, given a robot with a stack height of 5, one could move 2 robots 5 units to the left.
     - A robot can not move onto a square controlled by an opponents robot. A robot can move onto a square controlled by the same players robot, in which case they combine to form a larger stack.
+    - The maximum robot stack height is 8.
 5. When a player has no more robots, they lose the game. If both players robots all boom on the same turn, the game ends in a draw.
